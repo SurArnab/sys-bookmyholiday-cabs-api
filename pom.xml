@@ -52,7 +52,7 @@
 					    <properties>
 							<anypoint.platform.client_id>${anypoint.platform.client_id}</anypoint.platform.client_id>
 							<anypoint.platform.client_secret>${anypoint.platform.client_secret}</anypoint.platform.client_secret>
-							<env>dev</env>
+							<env>${env}</env>
 						</properties>
 					</cloudHubDeployment>
 				</configuration>

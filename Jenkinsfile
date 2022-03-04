@@ -13,7 +13,7 @@ pipeline {
   stages {
     stage('Build') {
       steps {
-            bat 'mvn -B -U -e -V clean -gs %M2SETTINGS% -DskipTests package'
+            bat 'mvn -B -U -e -V clean -gs -DskipTests package'
       }
     }
 
@@ -32,7 +32,7 @@ pipeline {
 		ENV = 'dev'
       }
       steps {
-            bat 'mvn -U -V -e -B -gs %M2SETTINGS% -DskipTests deploy -DskipMunitTests -DmuleDeploy -Dmule.version="%MULE_VERSION%" -Danypoint.username="%DEPLOY_CREDS_USR%" -Danypoint.password="%DEPLOY_CREDS_PSW%" -Dcloudhub.app="%APP_NAME%" -Dcloudhub.environment="%ENVIRONMENT%" -Dcloudhub.bg="%BG%" -Dcloudhub.worker="%WORKER%" -Danypoint.platform.client_id="%CLIENT_ID%" -Danypoint.platform.client_secret=%CLIENT_SECRET% -Denv = "%ENV%"' 
+            bat 'mvn -U -V -e -B -gs -DskipTests deploy -DskipMunitTests -DmuleDeploy -Dmule.version="%MULE_VERSION%" -Danypoint.username="%DEPLOY_CREDS_USR%" -Danypoint.password="%DEPLOY_CREDS_PSW%" -Dcloudhub.app="%APP_NAME%" -Dcloudhub.environment="%ENVIRONMENT%" -Dcloudhub.bg="%BG%" -Dcloudhub.worker="%WORKER%" -Danypoint.platform.client_id="%CLIENT_ID%" -Danypoint.platform.client_secret=%CLIENT_SECRET% -Denv = "%ENV%"' 
       }
     }
     /* stage('Deploy Production') {

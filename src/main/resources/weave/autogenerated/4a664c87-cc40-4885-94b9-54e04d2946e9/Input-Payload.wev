@@ -1,0 +1,29 @@
+%dw 2.0
+
+type auto_4a664c87_cc40_4885_94b9_54e04d2946e9_Input_Payload = {
+  destinationLocationDesc: String, 
+  images: String, 
+  baggage: String, 
+  endDate: String, 
+  origin: String, 
+  rating: Number, 
+  destination: String, 
+  availableCoupons?: String, 
+  description?: String, 
+  reschedulePolicy?: String, 
+  noOfDays: Number, 
+  number: String, 
+  carType: String, 
+  availableCars: Number, 
+  price: String, 
+  name: String, 
+  currency: String, 
+  id: String, 
+  surgeMultiplier: Number, 
+  originLocationDesc: String, 
+  availableseat: Number, 
+  startDate: String, 
+  cancellationPolicy?: String, 
+  _?: Any
+}
+

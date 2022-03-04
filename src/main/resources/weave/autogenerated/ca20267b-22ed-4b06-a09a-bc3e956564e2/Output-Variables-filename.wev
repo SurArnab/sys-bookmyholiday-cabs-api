@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_ca20267b_22ed_4b06_a09a_bc3e956564e2_Output_Variables_filename = String
+

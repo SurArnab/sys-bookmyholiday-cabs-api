@@ -1,0 +1,695 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:s3="http://www.mulesoft.org/schema/mule/s3"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+	<flow name="getCabsFlow" doc:id="913bd030-b62b-45d8-af06-2a459608fbb0" >
+		<logger level="INFO" doc:name="start Logger" doc:id="496b48f8-7f55-4477-a323-d630a39d9051" message='"Start of get cabs service for source " #[attributes.queryParams.source] " destination " #[attributes.queryParams.destination]'/>
+		<set-variable value="#[attributes.queryParams.source]" doc:name="Set Source" doc:id="924cde0c-61d4-46c6-8216-13c05abcccf5" variableName="source"/>
+		<set-variable value="#[attributes.queryParams.destination]" doc:name="Set destination" doc:id="17f6587f-cd58-44e9-8e1c-e8cb93db39c3" variableName="destination"/>
+		<ee:transform doc:name="Transform Message" doc:id="b973e20a-cd17-43d4-b0c4-4946165a4617" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::Dates
+output application/json
+---
+{
+	"startDate" : attributes.queryParams.startDate default tomorrow(),
+	"endDate" : attributes.queryParams.endDate default today() + ("P$(2)D" as Period),
+	"origin" : attributes.queryParams.source,
+	"destination" : attributes.queryParams.destination,
+	"noOfCars" : attributes.queryParams.noOfCars as Number
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="request data Logger" doc:id="968aaddc-f9e4-4482-93f2-6b0dd830eecf" message='"Request Data to send " #[payload]'/>
+		<db:select doc:name="Select" doc:id="7e66bd91-f6d7-4369-8db3-8e994ff51173" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from cabs where startdate= :startDate and enddate= :endDate and origin= :origin and destination= :destination and availablecars >= :noOfCars]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"startDate" : payload.startDate,
+	"endDate" : payload.endDate,
+	"origin" : payload.origin,
+	"destination" : payload.destination,
+	"noOfCars" : payload.noOfCars
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="558a5888-6669-473d-ac4f-497d713cd406" >
+			<when expression="#[sizeOf(payload) &gt; 0]">
+				<ee:transform doc:name="Transform Message" doc:id="6c467669-8d69-4c21-a52a-beff438d4490" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	id: payload01.ID as String,
+	name: payload01.name default "",
+	number: payload01.number default "",
+	description: payload01.description default "",
+	rating: payload01.rating default 0,
+	carType: payload01.carType default "",
+	startDate: payload01.startdate default "",
+	endDate: payload01.enddate default "",
+	noOfDays: payload01.noofdays default 0,
+	origin: payload01.origin default "",
+	originLocationDesc: payload01.originlocationdesc default "",
+	destination: payload01.destination default "",
+	destinationLocationDesc: payload01.destinationlocationdesc default "",
+	price: payload01.price default "",
+	currency: payload01.currency default "",
+	baggage: payload01.baggage  default 0,
+	surgeMultiplier: payload01.surgemultiplier default 0,
+	availableseat: payload01.availableseat default 0,
+	images: payload01.images default "",
+	availableCoupons: payload01.availablecoupons default "",
+	cancellationPolicy: payload01.cancellationpolicy default "",
+	reschedulePolicy: payload01.reschedulepolicy default "",
+	availableCars: payload01.availablecars default 0
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Response Logger" doc:id="e2899088-6e15-4241-8e2f-04022f765b43" message='"Response Received from cabs " #[payload]'/>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="bf040655-452b-49be-832e-effcdae1c431" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "No Cabs available for the search criteria"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="End Logger" doc:id="470b9d61-0ea7-4905-9813-5ec24a34700c" message='"End of get Cabs service for source " #[vars.source] " destination " #[vars.destination]'/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="c63946e8-d345-4a7f-b7eb-92d5c44027e7" type="ANY">
+				<logger level="INFO" doc:name="Error Log" doc:id="3edb46b3-542d-401c-adc8-36835b2ef538" message='"Error:"#[error.description]' />
+				<ee:transform doc:name="Transform Message" doc:id="acbab16b-527a-47e1-931e-05759026dae3" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": error.description
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[500]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="getCabCount" doc:id="6b920b69-7009-4e88-af86-82912aa9338d" >
+		<logger level="INFO" doc:name="Start Logger" doc:id="f771bdc7-31a9-49af-adfc-66ad302ac30a" message='"Start of max id count service"'/>
+		<db:select doc:name="Select" doc:id="4630a381-e64b-4000-9e41-7b8933517967" config-ref="Database_Config">
+			<db:sql ><![CDATA[select max("ID") from cabs]]></db:sql>
+		</db:select>
+		<choice doc:name="Choice" doc:id="822f9693-ab3b-45a6-a7d4-17b7b77c55bd" >
+			<when expression="#[sizeOf(payload) &gt; 0]">
+				<logger level="INFO" doc:name="Request Logger" doc:id="fc7e3546-3787-4f4c-9ed1-4aee3c9ff924" message='"ID received : " #[message.payload[0].max]'/>
+				<ee:transform doc:name="Transform Message" doc:id="883bc2da-4303-4074-827a-c17bafc71f22">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"idResponse" : payload[0].max
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="b345aaf4-8cf1-47ea-b4e0-a7b974a213f2" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"idResponse" : "No Id Found"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable value="500" doc:name="set HTTP status" doc:id="8553e2c4-0500-48be-8301-96fd2deb7078" variableName="httpStatus" />
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="End Logger" doc:id="c0924e36-d3d8-47fb-b8c0-0f17906ad1ec" message='"End of max id count service"' />
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="d95bfb83-aa13-4a7d-b8f7-2190c4f62f33" type="ANY" >
+				<logger level="INFO" doc:name="Error Log" doc:id="71a1b087-62ea-4e4b-a12c-18d862e8ba01" message='"Error:"#[error.description]' />
+				<ee:transform doc:name="Transform Message" doc:id="5c84a4f4-0de8-4bc4-a51d-ad966504a874" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": error.description
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[500]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="getBookingCount" doc:id="acd05a7f-0d2b-4793-8bc9-6c50b718348e">
+		<logger level="INFO" doc:name="Start Logger" doc:id="cd216e84-c868-48c6-b961-74f4eb1eae70" message='"Start of max bookingid count service"' />
+		<s3:get-object doc:name="Get object" doc:id="0fd29929-7c07-41d6-8223-b73da769a9f0" config-ref="Amazon_S3_Configuration" bucketName="${secure::amazons3.bucket}" key="${secure::amazons3.bookingfileName}" outputMimeType="application/json"/>
+		<ee:transform doc:name="Transform Message" doc:id="d9b6c4c9-fdce-4734-8cf7-350f0701c200" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"bookingResponse" : payload.bookingid as String
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="end Logger" doc:id="a3f6389b-e8f2-4970-955c-655779bc9a6d" message='"End of max booking id count service"' />
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="1547a70c-1a1a-4b99-8244-ae2970669048" type="ANY" >
+				<logger level="INFO" doc:name="Error Log" doc:id="15efc585-e404-476b-b206-d3f68d6a516d" message='"Error:"#[error.description]' />
+				<ee:transform doc:name="Transform Message" doc:id="11f3ee83-cb22-4201-acb5-1448d84e4589" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": error.description
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[500]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="getAvailabilityFlow" doc:id="4b13dc5f-4c8a-47db-8bc6-5cb9ca26b7ba" >
+		<logger level="INFO" doc:name="start Logger" doc:id="65df5ce3-832a-47c7-b9cf-bffaa19c8285" message='"Start of availability service for id " #[attributes.uriParams.id]'/>
+		<set-variable value="#[attributes.uriParams.id]" doc:name="set  id" doc:id="b5811116-bfcd-4728-8e68-c20446004ef1" variableName="id"/>
+		<db:select doc:name="Select" doc:id="71166453-6f4a-466f-a829-09725d5c26a8" config-ref="Database_Config">
+			<db:sql ><![CDATA[select availablecars from cabs where "ID"= :id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"id": attributes.uriParams.id
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="ba589f4b-7cff-4eea-8da0-127a66879378" >
+			<when expression="#[sizeOf(payload) &gt; 0]">
+				<logger level="INFO" doc:name="availability Logger" doc:id="bdd8ae61-70b5-4965-8cef-37de072de60f" message='"Availabilty of car received : " #[payload[0].availablecars]' />
+				<ee:transform doc:name="Transform Message" doc:id="9f95d7e9-08d3-4d33-98cd-ecd8947b1647" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"availability" : payload[0].availablecars
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="f0506f87-7b53-4b9c-9b63-a206281139b8" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"availability" : "No Id Found"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable value="500" doc:name="set HTTP status" doc:id="2d4015a6-6ce7-40e5-9914-748edad55540" variableName="httpStatus" />
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="End Logger" doc:id="a72e5710-48c3-4c4f-a6cc-0249179c8664" message='"End of availability service for id " #[vars.id]'/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="743f56b7-1a47-4195-b2ea-309f18d457cc" type="ANY" >
+				<logger level="INFO" doc:name="Error Log" doc:id="12442ec3-f3ab-4935-bba6-eb0a8f956130" message='"Error:"#[error.description]' />
+				<ee:transform doc:name="Transform Message" doc:id="5fb7ffbb-264b-456b-8fd6-7efe88814c7f" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": error.description
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[500]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="getCabDetailsFlow" doc:id="998dee3b-8b28-4598-b5bd-438dd53536da" >
+		<logger level="INFO" doc:name="start Logger" doc:id="c5467cc5-96b3-4c31-9cb3-e3bac6af38d5" message='"Start of get Cabs Details service for Id " #[attributes.uriParams.cab_id]'/>
+		<set-variable value="#[attributes.uriParams.cab_id]" doc:name="Set id" doc:id="c20f009d-91a6-4dd8-83c5-af23a2778e02" variableName="id"/>
+		<db:select doc:name="Select" doc:id="c0c7437e-dd1e-44b8-90fa-1581f56b28da" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from cabs where "ID"= :id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"id" : vars.id as Number
+}]]]></db:input-parameters>
+		</db:select>
+		<logger level="INFO" doc:name="payload Logger" doc:id="1ce56227-e22d-4bc7-b9e1-7639cc895bb5" message='"Data received from cabs " #[payload]'/>
+		<choice doc:name="Choice" doc:id="4f9fe103-fec5-44bf-b8f2-6cf19b8e7f47" >
+			<when expression="#[sizeOf(payload) &gt; 0]">
+				<ee:transform doc:name="map to target" doc:id="ea86949c-a3fa-4369-9a2b-60ef44f227f1" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	id: payload[0].ID as String,
+	name: payload[0].name default "",
+	number: payload[0].number default "",
+	description: payload[0].description default "",
+	rating: payload[0].rating as Number default 0,
+	carType: payload[0].carType default "",
+	startDate: payload[0].startdate default "",
+	endDate: payload[0].enddate default "",
+	noOfDays: payload[0].noofdays default 0,
+	origin: payload[0].origin default "",
+	originLocationDesc: payload[0].originlocationdesc default "",
+	destination: payload[0].destination default "",
+	destinationLocationDesc: payload[0].destinationlocationdesc default "",
+	price: payload[0].price default "",
+	currency: payload[0].currency default "",
+	baggage: payload[0].baggage default 0,
+	surgeMultiplier: payload[0].surgemultiplier default 0,
+	availableseat: payload[0].availableseat default 0,
+	images: payload[0].images default "",
+	availableCoupons: payload[0].availablecoupons default "",
+	cancellationPolicy: payload[0].cancellationpolicy default "",
+	reschedulePolicy: payload[0].reschedulepolicy default "",
+	availableCars: payload[0].availablecars default 0
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="response Logger" doc:id="6a45d085-60ac-4ade-b793-b0d464e6a43a" message='"Response Received from cab details " #[payload]' />
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="5f9b374e-b175-4033-8f81-13e4c864f2d9" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "No Cab details available for the Id " ++ vars.id
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="end Logger" doc:id="ce142750-201f-4ce1-9b1b-eaa6cbc0479f" message='"End of get Cabs Details service for Id " #[vars.id]'/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="991e6dd6-b9cf-4c7c-bd7b-33cf76dca037" type="ANY" >
+				<logger level="INFO" doc:name="Error Log" doc:id="7ed35d8b-bee5-4acf-b0d1-6f36fdc057eb" message='"Error:"#[error.description]' />
+				<ee:transform doc:name="Transform Message" doc:id="57c8920a-b782-4fb5-acb1-a43f8745a132" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": error.description
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[500]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="addCabFlow" doc:id="4a664c87-cc40-4885-94b9-54e04d2946e9" >
+		<logger level="INFO" doc:name="start Logger" doc:id="c2a7c1a3-cf30-41b5-9d70-ca4edd8c3d96" message='"Start of Add Cab service for id " #[payload.id]'/>
+		<set-variable value="#[payload.id]" doc:name="Set id" doc:id="e172889b-801e-483a-881e-7692694e498d" variableName="id"/>
+		<logger level="INFO" doc:name="request Logger" doc:id="df30dc62-fa28-4848-bdd5-a870b3a94316" message='"Data to insert in table " #[payload]'/>
+		<db:insert doc:name="Insert" doc:id="17ce1a9c-2872-4b8b-89e0-557c7746ab2a" config-ref="Database_Config">
+			<db:sql ><![CDATA[insert into cabs values(:id, :name, :number, :description, :origin, :destination, :startdate, :enddate, :price, :availablecoupons, :reschedulepolicy, :cancellationpolicy, :destinationlocationdesc, :originlocationdesc, :baggage, :availableseat, :cartype, :currency, :surgemultiplier, :rating, :noofdays, :images, :availablecars)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[output application/java
+---
+{
+	cartype: payload.carType,
+	images: payload.images,
+	availablecars: payload.availableCars,
+	baggage:payload.baggage,
+	noofdays: payload.noOfDays,
+	origin: payload.origin,
+	destination: payload.destination,
+	rating: payload.rating,
+	description: payload.description,
+	startdate: payload.startDate,
+	destinationlocationdesc: payload.destinationLocationDesc,
+	reschedulepolicy: payload.reschedulePolicy,
+	surgemultiplier: payload.surgeMultiplier,
+	number: payload.number,
+	enddate: payload.endDate,
+	cancellationpolicy: payload.cancellationPolicy,
+	price: payload.price,
+	availablecoupons: payload.availableCoupons,
+	name: payload.name,
+	currency: payload.currency,
+	id: payload.id as Number,
+	availableseat: payload.availableseat,
+	originlocationdesc: payload.originLocationDesc
+}]]]></db:input-parameters>
+		</db:insert>
+		<choice doc:name="Choice" doc:id="44b7318e-4e7b-4eed-8a8a-259485ddfc09" >
+			<when expression="#[payload.affectedRows == 1]">
+				<ee:transform doc:name="response mapping" doc:id="f2426d54-a3b3-4ce9-8d09-2ffa9786294d" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message" : "resource added successfully",
+	"id" : vars.id
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error mapping" doc:id="e9368aea-f9c9-4998-99f2-b1ad05e96fe0" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"message" : "Not able to add cabs"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable value="500" doc:name="set HTTP status" doc:id="c358bef4-2a5d-4152-91b8-c33692d5994b" variableName="httpStatus"/>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="end Logger" doc:id="d8e0ccb3-1bed-48d5-9960-3815e78e6ec0" message='"End of add Cabs for id " #[vars.id]' />
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="41746fa2-2fcb-4643-a637-73910fb2f245" type="ANY" >
+				<logger level="INFO" doc:name="Error Log" doc:id="98400f71-599b-4e9f-8a4f-acbf2e9a03ba" message='"Error:"#[error.description]' />
+				<ee:transform doc:name="error mapping" doc:id="6e2bb0a0-8e6f-417a-b77f-789e119dfa24" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": error.description
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[500]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="cancelFlow" doc:id="4f00bc4f-933c-41bd-b42e-7ca8eaa6d514" >
+		<logger level="INFO" doc:name="Start Logger" doc:id="55327307-58ab-4a7c-91b1-9e95088a5a02" message='"Start of cancel booking" #[payload.bookingid]'/>
+		<set-variable value="#[payload]" doc:name="Set Payload" doc:id="1e6798d1-1289-4bfc-b907-f655db4cc57e" variableName="inputData"/>
+		<set-variable value="#[attributes.uriParams.cab_id]" doc:name="Set Id" doc:id="0dfa7e29-6329-46f2-b424-23751ed05d5f" variableName="cabid"/>
+		<s3:list-objects doc:name="List objects" doc:id="e9b91563-b7cc-4566-82da-5091c6f88522" config-ref="Amazon_S3_Configuration" bucketName="${secure::amazons3.bucket}"/>
+		<set-variable value="#[payload]" doc:name="Set payload" doc:id="54208210-8f75-4c9b-8dea-12f7eb13d63d" variableName="listData"/>
+		<choice doc:name="Choice" doc:id="a226ae45-8d45-4c7d-a445-c797a5590b86" >
+			<when expression="#[sizeOf(payload) &gt; 0]">
+				<try doc:name="Try" doc:id="516c5c2d-fa22-40c7-85d8-b1e7f04b9f29" transactionalAction="ALWAYS_BEGIN">
+			<foreach doc:name="For Each" doc:id="b1452e6c-f1ba-43f6-8d57-5fb879a1fa74">
+			<choice doc:name="Choice" doc:id="7d0d9c9d-a190-47d7-aab0-0203de70d9b8">
+				<when expression="#[payload.key contains vars.inputData.bookingid]">
+					<set-variable value="#[payload.key]" doc:name="Set key" doc:id="535261e3-370b-4a69-8ce1-d83f7d15dda4" variableName="key"/>
+								<db:select doc:name="Select" doc:id="4011f3d6-caf7-42e4-91f3-bdf238a3b7f5" config-ref="Database_Config">
+					<db:sql><![CDATA[select availablecars from cabs where "ID"= :id]]></db:sql>
+					<db:input-parameters><![CDATA[#[{
+	"id": vars.cabid
+}]]]></db:input-parameters>
+				</db:select>
+								<logger level="INFO" doc:name="available cars Logger" doc:id="522a6d59-7605-4737-a079-7ea72fef5a68" message='"Available Cars now " #[payload]' />
+								<ee:transform doc:name="add available cars" doc:id="7fc71c86-fb84-49bd-9b9d-ae155e6fe6b8">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	updatedCars : ((payload[0].availablecars default 0) + vars.inputData.noOfCars)
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+								<logger level="INFO" doc:name="Updated Logger" doc:id="f92a01ef-dd6e-4b06-87c6-8f8c3d6d71c9" message='"Updated Cars" #[payload] "List of keys: " #[payload.key] "booking id:" #[vars.inputData.bookingid]' />
+								<db:update doc:name="Update cabs" doc:id="1038ef8d-d5a9-412b-a08b-bcaad2a9414f" config-ref="Database_Config" transactionalAction="ALWAYS_JOIN">
+				<db:sql><![CDATA[update cabs set "availablecars" = :availablecars where "ID"= :id]]></db:sql>
+						<db:input-parameters><![CDATA[#[{
+	"availablecars" : payload.updatedCars,
+	"id" : vars.cabid
+}]]]></db:input-parameters>
+			</db:update>
+								<s3:delete-object doc:name="Delete object" doc:id="a7279f75-53cd-448d-a1ed-3553fc807839" config-ref="Amazon_S3_Configuration" bucketName="${secure::amazons3.bucket}" key="#[vars.key]" />
+				</when>
+			</choice>
+		</foreach>
+		</try>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="no data" doc:id="163e079b-c039-46a9-af14-e0b8c8f950f0" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "No Data to cancel"
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[500]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="map to target" doc:id="49b0778c-17a8-4b75-b723-91b10e50f016">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "bookingid": vars.inputData.bookingid,
+  "message" : "Booking Cancelled Successfully"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="5a62eab0-9ec1-475e-9a09-65ccd6418aa5" message='"End of cancel booking " #[vars.inputData.bookingid]' />
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="d8635adc-c259-49d4-8159-bac186feae27" type="ANY" >
+				<logger level="INFO" doc:name="Error Log" doc:id="d2e16f08-cfcf-464b-9baa-ccdbd275147d" message='"Error:"#[error.description]' />
+				<ee:transform doc:name="Transform Message" doc:id="ef21481c-d8cf-4b97-98d2-01aa088b58e1" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": error.description
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[500]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="UpdateCabsFlow" doc:id="bc653b46-5a99-4ff0-a521-ee459ef7a728" >
+		<logger level="INFO" doc:name="start Logger" doc:id="6a514e94-07d1-477c-a640-175f72e799c6" message='"Start of Update Cabs flow: " #[payload.id]'/>
+		<ee:transform doc:name="set update query" doc:id="86372807-c75e-47fd-8f7e-d839e785d09f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::Strings
+var data=(if (payload.name != null) ('name=\'' ++ payload.name ++ '\',') else '')	
+	++ (if (payload.destinationLocationDesc != null) ('destinationlocationdesc=\'' ++ payload.destinationLocationDesc ++ '\',') else '')
+	++ (if (payload.startDate != null) ('startdate=\'' ++ payload.startDate ++ '\',') else '')
+	++ (if (payload.endDate != null) ('enddate=\'' ++ payload.endDate ++ '\',') else '')
+	++ (if (payload.origin != null) ('origin=\'' ++ payload.origin ++ '\',') else '')
+	++ (if (payload.rating != null) ('rating=\'' ++ payload.rating ++ '\',') else '')
+	++ (if (payload.destination != null) ('destination=\'' ++ payload.destination ++ '\',') else '')
+	++ (if (payload.availableCoupons != null) ('availablecoupons=\'' ++ (payload.availableCoupons default "") ++ '\',') else '')
+	++ (if (payload.description != null) ('description=\'' ++ (payload.description default "") ++ '\',') else '')
+	++ (if (payload.reschedulePolicy != null) ('reschedulepolicy=\'' ++ (payload.reschedulePolicy default "") ++ '\',') else '')
+	++ (if (payload.cancellationPolicy != null) ('cancellationpolicy=\'' ++ (payload.cancellationPolicy default "")++ '\',') else '')
+	++ (if (payload.surgeMultiplier != null) ('surgemultiplier=\'' ++ payload.surgeMultiplier ++ '\',') else '')
+	++ (if (payload.noOfDays != null) ('noofdays=\'' ++ payload.noOfDays ++ '\',') else '')
+	++ (if (payload.price != null) ('price=\'' ++ payload.price ++ '\',') else '')
+	++ (if (payload.baggage != null) ('baggage=\'' ++ payload.baggage ++ '\',') else '')
+	++ (if (payload.originLocationDesc != null) ('originlocationdesc=\'' ++ payload.originLocationDesc ++ '\',') else '')
+	++ (if (payload.availableseat != null) ('availableseat=\'' ++ payload.availableseat ++ '\',') else '')
+	++ (if (payload.carType != null) ('cartype=\'' ++ payload.carType ++ '\',') else '')
+	++ (if (payload.currency != null) ('currency=\'' ++ payload.currency ++ '\',') else '')
+	++ (if (payload.availableCars != null) ('availablecars=\'' ++ payload.availableCars ++ '\',') else '')
+	
+output application/java
+---
+(if(data endsWith ',') (substring(data,0,sizeOf(data)-1)) else data)]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="id" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.id]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<set-variable value="#[payload]" doc:name="set Payload" doc:id="9b697678-a1ed-4c4b-8ba4-0d49d6c178dc" variableName="inputData"/>
+		<logger level="INFO" doc:name="update Logger" doc:id="5059949c-dd1d-4fce-8c64-f7d4458b79a9" message='"Cabs to Update:" #[payload]' />
+		<db:update doc:name="Update" doc:id="a692a4ee-5f83-47ca-9a94-6fc1f12424ca" config-ref="Database_Config" >
+			<db:sql >#["update cabs set $(vars.inputData) where 'ID'= :id"]</db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"id" : vars.id
+}]]]></db:input-parameters>
+		</db:update>
+		<choice doc:name="Choice" doc:id="105860de-2a6a-4426-a16e-7ff18484429f" >
+			<when expression="#[payload.affectedRows == 1]">
+				<ee:transform doc:name="map to target" doc:id="8b225cba-5e22-4e2f-bbbb-cebeb790e4f2" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "message" : "cabs updated successfully",
+  "id": vars.id
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error map" doc:id="c72586f0-141a-48ee-a8f8-ff5ca083bc25" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "message" : "Unable to update cabs",
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[500]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="end Logger" doc:id="faf1ab84-3888-42f5-ba16-75820bfebf7a" message='"End of Update Cabs flow" #[vars.inputData.id]' />
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="d28dc7c7-2785-414a-bf1e-d9043296b7f4" type="ANY" >
+				<logger level="INFO" doc:name="Error Log" doc:id="07b7082b-0c90-4886-9629-e85ad965e348" message='"Error:"#[error.description]' />
+				<ee:transform doc:name="Transform Message" doc:id="09f1f6b2-29e3-4b55-a92d-8651fbbb2a73" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": error.description
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[500]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="addBookingFlow" doc:id="6b1e9a28-24f6-4f08-a0fb-d65bc245877f">
+		<logger level="INFO" doc:name="start Logger" doc:id="ff09f90b-da6b-4fed-af37-46fb0da4a385" message='"Start of add booking flow" #[attributes.uriParams.cab_id]' />
+		<set-variable value="#[(payload.availableCars  - payload.noOfCars)]" doc:name="remaining cars" doc:id="94e14303-eba9-4f90-a2ca-3cc7a542448a" variableName="remainingCars" />
+		<set-variable value="#[attributes.uriParams.cab_id]" doc:name="Id" doc:id="f3b59458-59b1-4b5e-809f-c4b15d070281" variableName="id" />
+		<set-variable value='#[%dw 2.0&#10;import * from dw::core::Dates&#10;output application/json	&#10;---&#10;(payload.serviceNumber default "") ++ "_" ++ (payload.bookingid default "") ++ "_" ++ (now() as Number) ++ ".csv"]' doc:name="set filename" doc:id="9a5a6c9a-ae46-485f-8fcc-134eba059f39" variableName="filename" />
+		<ee:transform doc:name="map to booking" doc:id="a5f8b563-3342-4546-94cb-129ed137b764">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/csv
+---
+{
+	"name": payload.userName default "",
+	"userId" : if(payload.isGuest == true) ("Guest") else payload.userid,
+	"contact" : payload.contactNumber,
+	"serviceName" : payload.serviceName,
+	"serviceNumber" : payload.serviceNumber,
+	"serviceId" : payload.serviceId,
+	"bookingId" : payload.bookingid,
+	"startDate" : payload.startDate,
+	"startTime" : payload.startTime,
+	"endDate" : payload.endDate,
+	"endTime" : payload.endTime,
+	"origin" : payload.origin,
+	"destination" : payload.destination,
+	"noOfPassengers" : payload.noOfPassengers,
+	"noOfCars" : payload.noOfCars,
+	"couponApplied" : payload.couponApplied,
+	"couponName" : payload.couponName default "",
+	"price" : payload.price,
+	"carType" : payload.cartype,
+	"insurance" : payload.insurance
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="bookingid"><![CDATA[%dw 2.0
+output application/json
+---
+payload.bookingid]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="data Logger" doc:id="2ae2f40a-983c-46da-ba9a-4a6f9ade4bae" message='"Booking to send:" #[payload]' />
+		<set-variable value="#[payload]" doc:name="Set Payload" doc:id="7c7c43e8-174c-4cc1-89c7-fd535ae6e349" variableName="Payload" />
+		<try doc:name="Try" doc:id="6c3b81a0-b7df-4852-a977-70913c8b21bb" transactionalAction="ALWAYS_BEGIN">
+			<db:update doc:name="Update" doc:id="597a0094-51ff-424c-b8dc-9e8d2389cd6f" config-ref="Database_Config" transactionalAction="ALWAYS_JOIN">
+				<db:sql><![CDATA[update cabs set "availablecars" = :remainingcars where "ID" = :id]]></db:sql>
+				<db:input-parameters><![CDATA[#[{
+	"remainingcars" : vars.remainingCars,
+	"id" : vars.id
+}]]]></db:input-parameters>
+			</db:update>
+			<s3:create-object doc:name="Create booking" doc:id="21e05671-7e54-40ad-be45-d2d997f35f08" config-ref="Amazon_S3_Configuration" bucketName="${secure::amazons3.bucket}" key="#[vars.filename]" contentType="application/csv">
+				<s3:object-content><![CDATA[#[vars.Payload]]]></s3:object-content>
+			</s3:create-object>
+		</try>
+		<s3:create-object doc:name="create booking id" doc:id="240a427c-0cdf-4f49-a705-c4a2433b7bdd" config-ref="Amazon_S3_Configuration" bucketName="${secure::amazons3.bucket}" key="${secure::amazons3.bookingfileName}">
+			<s3:object-content><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+	"bookingid" : vars.bookingid
+}]]]></s3:object-content>
+		</s3:create-object>
+		<ee:transform doc:name="map to target" doc:id="51d54dd3-70f6-4243-b2a6-28cfcf84e6a5">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"bookingid" : vars.bookingid,
+	"message" : "Booking Submitted Successfully"
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+		<logger level="INFO" doc:name="end Logger" doc:id="073ff948-3b6c-4d45-b7ff-94e53944b491" message='"End of add booking flow" #[vars.id]' />
+		<error-handler>
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="bceb3349-3a17-49f2-b28a-ec0aa86c72c3" type="ANY">
+				<logger level="INFO" doc:name="Error Log" doc:id="5b8695f2-790a-450b-9987-f1771890b298" message='"Error:"#[error.description]' />
+				<ee:transform doc:name="Transform Message" doc:id="d1fddc7d-dd75-4c7c-a015-69bdfff3af26">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": error.description
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="httpStatus"><![CDATA[500]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+</mule>

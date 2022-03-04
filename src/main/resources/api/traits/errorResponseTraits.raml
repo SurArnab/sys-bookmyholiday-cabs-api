@@ -1,0 +1,36 @@
+#%RAML 1.0 Trait
+
+responses:
+  400:
+    body:
+      application/json:
+        example:
+          {
+            "StatusCode":"400",
+            "ErrorMessage": "Bad Request"
+          }
+  404:
+    body:
+      application/json:
+        example:
+          {
+            "StatusCode":"404",
+            "ErrorMessage": "Resource Not Found"
+          }
+ 
+  500:
+    body:
+      application/json:
+        example:
+          {
+            "StatusCode":"500",
+            "ErrorMessage": "Internal Server Error"
+          }
+  204:
+    body:
+      application/json:
+        example:
+          {
+            "statusCode" : "204",
+            "errorMessage": "No Data Found"
+          }

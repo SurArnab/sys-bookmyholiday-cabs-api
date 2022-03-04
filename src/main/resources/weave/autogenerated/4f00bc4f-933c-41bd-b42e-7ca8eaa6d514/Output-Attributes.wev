@@ -1,0 +1,23 @@
+%dw 2.0
+
+type auto_4f00bc4f_933c_41bd_b42e_7ca8eaa6d514_Output_Attributes = {|
+  clientCertificate?: {|
+    publicKey?: {|  |}, 
+    "type"?: String, 
+    encoded?: Binary
+  |}, 
+  headers: {|  |}, 
+  listenerPath: String, 
+  method: String, 
+  queryParams: {|  |}, 
+  queryString: String, 
+  relativePath: String, 
+  remoteAddress: String, 
+  requestPath: String, 
+  requestUri: String, 
+  scheme: String, 
+  uriParams: {| cab_id: String |}, 
+  version: String, 
+  localAddress: String
+|}
+

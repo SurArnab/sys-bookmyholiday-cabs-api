@@ -1,0 +1,95 @@
+#%RAML 1.0 Library
+usage: This is resource Type for booking car 
+
+traits:
+  errorResponse: !include ../traits/errorResponseTraits.raml
+
+resourceTypes:
+  bookingCollection:
+    is:
+      - errorResponse
+    get:
+      description: This is to fetch the <<resourcePathName>>
+      responses:
+        200:
+          body:
+            application/json:
+              type: <<getBookingType>>
+              example: |
+                <<getBookingExample>>
+    post?:
+      description: This is to add the <<resourcePathName>>
+      body:
+        application/json:
+          type: <<addBookingType>>
+          example: |
+            <<addBookingExample>>
+      responses:
+        201:
+          body:
+            application/json:
+              type: <<postResponseType>>
+              example: |
+                <<postResponseExample>>
+    
+    put?:
+      description: This is to update the <<resourcePathName>>
+      body:
+        application/json:
+          type: <<addBookingType>>
+          example: |
+            <<addBookingExample>>
+      responses:
+        200:
+          body:
+            application/json:
+              type: <<postResponseType>>
+              example: |
+                <<postResponseExample>>
+  bookingDetailsCollection:
+    is:
+      - errorResponse
+    get:
+      description: This is to fetch the <<resourcePathName>> based on id.
+      responses:
+        200:
+          body:
+            application/json:
+              type: <<getBookingDetailsType>>
+              example: |
+                <<getBookingDetailsExample>>
+    post:
+      description: This is to complete the booking of <<resourceName>>
+      body:
+        application/json:
+          type: <<submitBookingType>>
+          example: |
+            <<submitBookingExample>>
+      responses:
+        201:
+          body:
+            application/json:
+              example: |
+                <<completeBookingResponseExample>>
+    put?:
+      description: This is to cancel the booking of exising <<resourceName>>
+      body:
+        application/json:
+          type: <<updateBookingType>>
+          example: |
+            <<updateBookingExample>>
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+                <<completeBookingResponseExample>>
+    patch?:
+      description: This is to reschedule the existing booking of <<resourceName>>
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+                <<completeBookingResponseExample>>
+

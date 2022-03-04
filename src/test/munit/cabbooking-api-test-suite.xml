@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+	<munit:config name="cabbooking-api-test-suite.xml" />
+	<munit:test name="cabbooking-api-test-suite-get:\cabs:cabbooking-api-configTest" doc:id="9ded34c2-1826-425c-b1f2-39dee5723112" description="Test">
+		<munit:behavior >
+			<munit-tools:mock-when doc:name="Mock when" doc:id="f8164e07-5b49-4df8-ba39-ace276ac5507" processor="db:select">
+				<munit-tools:with-attributes>
+					<munit-tools:with-attribute whereValue="7e66bd91-f6d7-4369-8db3-8e994ff51173" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return>
+					<munit-tools:payload value='#[output application/json --- readUrl("classpath://testinputs/getCabs.json")]' />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+		</munit:behavior>
+		<munit:execution >
+			<munit:set-event doc:name="Set Event" doc:id="619fe4d5-8feb-4c66-8c36-f133866e71b4">
+				<munit:attributes value='#["queryParams" : {"source" : "MUM" , "destination" : "GOA" , "startDate" : "2022-02-27" , "endDate" : "2022-02-27" , "noOfCars" : 2 }]' />
+			</munit:set-event>
+			<flow-ref doc:name="Flow-ref to get:\cabs:cabbooking-api-config" doc:id="5561044a-e9b9-4df6-83b8-2d5555e3a43e" name="get:\cabs:cabbooking-api-config"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert expression" doc:id="9e6e987a-c49b-4a18-9eca-8b8e8b9b2c24">
+				<munit-tools:that><![CDATA[#[import * from dw::test::Asserts 
+ ---
+payload[0].id must notBeNull()]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="cabbooking-api-test-suite-get:\cabsFailure" doc:id="21e59aff-689e-49db-8645-f10e101ecce0" description="Test">
+			<munit:execution>
+				<munit:set-event doc:name="Set Event" doc:id="519d750a-0067-4ed9-b65d-fd3a68ac3245">
+					<munit:attributes value='#["queryParams" : {"source" : "MUM" , "destination" : "GOA" , "startDate" : "2022-02-29" , "endDate" : "2022-02-27" , "noOfCars" : 2 }]' />
+				</munit:set-event>
+				<flow-ref doc:name="Flow-ref to get:\cabs:cabbooking-api-config" doc:id="7cd88602-78d1-435f-b904-77dce1f06159" name="get:\cabs:cabbooking-api-config" />
+			</munit:execution>
+			<munit:validation>
+				<munit-tools:assert doc:name="Assert expression" doc:id="22c4a4a7-3795-485c-9e64-d75aeb1e3263">
+					<munit-tools:that><![CDATA[#[import * from dw::test::Asserts 
+ ---
+payload.message as String must contain("No Cabs")]]]></munit-tools:that>
+				</munit-tools:assert>
+			</munit:validation>
+		</munit:test>
+	<munit:test name="cabbooking-api-test-get:\dbconnectivity" doc:id="0b0c1a89-4184-497c-bf58-ad597bad8763" >
+		<munit:behavior >
+			<munit-tools:mock-when doc:name="Mock when" doc:id="bcb39e3b-df69-4f0b-81e8-a8cedc20a6c9" processor="db:select">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="7e66bd91-f6d7-4369-8db3-8e994ff51173" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:error typeId="DB:CONNECTIVITY" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+		</munit:behavior>
+		<munit:execution >
+			<munit:set-event doc:name="Set Event" doc:id="a377f63c-edd5-4712-b0e6-08249423a946" >
+				<munit:attributes value='#["queryParams" : {"source" : "MUM" , "destination" : "GOA" , "startDate" : "2022-02-29" , "endDate" : "2022-02-27" , "noOfCars" : 2 }]' />
+			</munit:set-event>
+			<flow-ref doc:name="Flow-ref to get:\cabs:cabbooking-api-config" doc:id="2efeaf34-9ab4-4d9e-a566-0b0a2749740d" name="get:\cabs:cabbooking-api-config" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert expression" doc:id="2cc786f6-ee42-488a-8212-517fefcee682" >
+				<munit-tools:that ><![CDATA[#[import * from dw::test::Asserts 
+ ---
+payload.message must notBeNull()]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="cabbooking-api-test-suiteTest-getCabDetails-Invalidid" doc:id="19c520ad-e07d-4096-9100-cd9721464bf0" >
+		<munit:execution >
+			<munit:set-event doc:name="Set Event" doc:id="ef991ed9-5ead-4078-a581-25cc2d24861a" >
+				<munit:attributes value='#["uriParams" : {"cab_id" : 8 }]' />
+			</munit:set-event>
+			<flow-ref doc:name="Flow-ref to get:\cabs\(cab_id):cabbooking-api-config" doc:id="6f4f17cd-1ae5-4f62-b999-91d689ebf9c8" name="get:\cabs\(cab_id):cabbooking-api-config" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert expression" doc:id="c3f027af-a708-446d-9243-889a2a8165bb" >
+				<munit-tools:that ><![CDATA[#[import * from dw::test::Asserts 
+ ---
+payload.message as String must contain("No Cabs")]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="cabbooking-api-test-suite-get:\cabs\(cab_id):cabbooking-api-configTest" doc:id="69b7e895-0e52-4db6-8b52-1c939f96f794" description="Test">
+		<munit:execution >
+			<munit:set-event doc:name="Set Event" doc:id="bf56fcdf-1834-4d3a-ae2d-822351a86da9" >
+				<munit:attributes value='#["uriParams" : {"cab_id" :  3 }]' />
+				<munit:attributes value='#["uriParams" : {"cab_id" :  3 }]' />
+				<munit:attributes value='#["uriParams" : {"cab_id" :  3 }]' />
+				<munit:attributes value='#["uriParams" : {"cab_id" : 3 }]' />
+			</munit:set-event>
+			<flow-ref doc:name="Flow-ref to get:\cabs\(cab_id):cabbooking-api-config" doc:id="df7851dc-058c-451f-bf0e-6b52b1f2d16d" name="get:\cabs\(cab_id):cabbooking-api-config"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert expression" doc:id="5ea1d65a-fc3d-42fd-8021-3e67e71a6416" >
+				<munit-tools:that ><![CDATA[#[import * from dw::test::Asserts 
+ ---
+payload.id must notBeNull()]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="cabbooking-api-test-suiteTest-getCabDetailsDBConnectivity" doc:id="318fa979-4d4c-4f57-8944-59c3bc6d2655" >
+		<munit:behavior >
+			<munit-tools:mock-when doc:name="Mock when" doc:id="78dfbc23-9a5f-4e42-a2fb-acf8b60dbf35" processor="db:select">
+				<munit-tools:with-attributes>
+					<munit-tools:with-attribute whereValue="7e66bd91-f6d7-4369-8db3-8e994ff51173" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return>
+					<munit-tools:error typeId="DB:CONNECTIVITY" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+		</munit:behavior>
+		<munit:execution >
+			<munit:set-event doc:name="Set Event" doc:id="4c307aae-79ed-4a92-97c5-417cb01577d0" >
+				<munit:attributes value='#["uriParams" : {"cab_id" :  3 }]' />
+				<munit:attributes value='#["uriParams" : {"cab_id" :  3 }]' />
+				<munit:attributes value='#["uriParams" : {"cab_id" :  3 }]' />
+				<munit:attributes value='#["uriParams" : {"cab_id" : 3 }]' />
+			</munit:set-event>
+			<flow-ref doc:name="Flow-ref to get:\cabs\(cab_id):cabbooking-api-config" doc:id="bd2cf8c6-0e15-4258-be8d-acd88340940e" name="get:\cabs\(cab_id):cabbooking-api-config" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert expression" doc:id="8f2fe234-105e-41b2-a742-11001d6ef42b" >
+				<munit-tools:that ><![CDATA[#[import * from dw::test::Asserts 
+ ---
+payload.message must notBeNull()]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="cabbooking-api-test-suite-get:\cabs\count:cabbooking-api-configTest" doc:id="180ef8d2-2686-43d3-9129-f81d919fd5b2" description="Test">
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to get:\cabs\count:cabbooking-api-config" doc:id="8f23d2e1-14d1-4a2b-810b-41cd08a2ce4d" name="get:\cabs\count:cabbooking-api-config"/>
+		</munit:execution>
+	</munit:test>
+	<munit:test name="cabbooking-api-test-suite-get:\cabs\count\availability\(id):cabbooking-api-configTest" doc:id="dd435554-9e9b-4e05-8fe4-d41581b13ba4" description="Test">
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to get:\cabs\count\availability\(id):cabbooking-api-config" doc:id="11c94212-a3ab-4b3e-a206-541e2161bcd0" name="get:\cabs\count\availability\(id):cabbooking-api-config"/>
+		</munit:execution>
+	</munit:test>
+
+
+</mule>

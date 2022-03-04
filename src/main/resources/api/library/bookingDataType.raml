@@ -1,0 +1,164 @@
+#%RAML 1.0 Library
+usage: this is booking data type library
+
+types:
+  booking:
+    properties:
+      name:
+      id:
+      number:
+      description:
+        type: string
+        required: false
+      rating:
+        type: number
+        example: 0
+      carType:
+        type: string
+      startDate:
+        type: date-only
+      endDate:
+        type: date-only
+      noOfDays:
+        type: number
+        default: 0
+      origin:
+        type: string
+        example: MUM
+      originLocationDesc:
+        type: string
+        example: MUMBAI
+      destination:
+        type: string
+        example: GOA
+      destinationLocationDesc:
+        type: string
+      price:
+        type: string
+      currency:
+      baggage:
+        type: number
+      surgeMultiplier:
+        type: number
+        default : 0
+      availableseat: 
+        type: number
+        default: 0
+      images:
+        type: string
+      availableCoupons:
+        type: string
+        required: false
+      cancellationPolicy:
+        type: string
+        required: false
+      reschedulePolicy:
+        type: string
+        required: false
+      availableCars:
+        type: number
+
+  submitBooking:
+    properties:
+      startDate:
+        type: date-only
+      endDate:
+        type: date-only
+      startTime:
+        type: time-only
+      endTime:
+        type: time-only
+      origin:
+      destination:
+      cartype:
+        type: string
+      noOfPassengers:
+        type: number
+      insurance:
+        type: boolean
+        default: false
+        required: false
+      userName:
+      userid:
+        type: string
+        required: false
+      isGuest:
+        type: boolean
+        default: false
+      contactNumber:
+        type: number
+        maximum: 9999999999
+        minimum: 1000000001
+        required: true
+        example: 9876543210
+      couponName:
+        type: string
+        required: false
+      couponApplied:
+        type: boolean
+        required: false
+      price:
+        type: number
+      bookingid:
+        type: string
+      serviceName:
+        type: string
+      serviceNumber:
+        type: string
+        required: false
+      noOfCars:
+        type : number
+      availableCars:
+        type: number
+      
+
+
+  cancelBooking:
+    properties:
+      bookingid:
+        type: string
+
+  bookingResponse:
+    properties:
+      booking_number:
+      booking_name:
+      origin:
+      destination:
+      price:
+        properties:
+          baseFare: 
+            type: number
+            default: 0
+          taxes:
+            type: number
+            default: 0
+          total:
+            type: number
+            default: 0
+      currency:
+      baggage:
+        properties:
+          total:
+            type: number
+            default: 0
+      startDate:
+        type: date-only
+      endDate:
+        type: date-only
+      startTime:
+        type: time-only
+      endTime:
+        type: time-only
+      noOfDays:
+        type: number
+        default: 0
+      couponApplied:
+        type: boolean
+        default: false
+      couponName:
+        default: ""
+
+  addBookingResponse:
+    properties:
+      id:
+      message:

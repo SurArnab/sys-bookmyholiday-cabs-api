@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:s3="http://www.mulesoft.org/schema/mule/s3"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="processuberfile" doc:id="e3c057d9-1aaf-4dfd-9bd7-c968fa94f09f" >
+		<set-payload value="#[vars.consolidatePayloadUber]" doc:name="Set Payload" doc:id="d002c5fe-6c85-49a6-b3fa-e2761b29832c" />
+		<ee:transform doc:name="Transform Message" doc:id="a7b0ef8c-2a36-4941-81b0-ea961b1a7484">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/csv
+---
+payload map(row, index) -> {
+	"name": row.name default "",
+	"userId" : row.userId,
+	"contact" : row.contact,
+	"serviceName" : row.serviceName,
+	"serviceNumber" : row.serviceNumber,
+	"serviceId" : row.serviceId,
+	"bookingId" : row.bookingId,
+	"startDate" : row.startDate,
+	"startTime" : row.startTime,
+	"endDate" : row.endDate,
+	"endTime" : row.endTime,
+	"origin" : row.origin,
+	"destination" : row.destination,
+	"noOfPassengers" : row.noOfPassengers,
+	"noOfCars" : row.noOfCars,
+	"couponApplied" : row.couponApplied,
+	"couponName" : row.couponName,
+	"price" : row.price,
+	"carType" : row.carType,
+	"insurance" : row.insurance	
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="93e3528e-3b5a-480a-826a-4c91bce3014c" message='"Uber Payload: " #[payload]'/>
+		<set-variable value='#[%dw 2.0&#10;import * from dw::core::Dates&#10;output application/json	&#10;---&#10;"Consolidate_UBER_Data_" ++ (now() as Number) ++ ".csv"]' doc:name="Set filename" doc:id="736fe7f3-95e0-4499-a366-395e75cfa85d" variableName="filename" />
+		<s3:create-object doc:name="Create object" doc:id="23486db4-cc40-428a-b976-dd50cd52218f" config-ref="Amazon_S3_Configuration" bucketName="${secure::amazons3.bucket}" key="#[vars.filename]">
+			</s3:create-object>
+		<ee:transform doc:name="split files" doc:id="eb3e1a32-c819-4470-aa0c-33d998bdefbf" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+vars.uberfileName splitBy(/[,\/]/)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="43cc2f25-6c54-495c-83ca-a7e5b7414119" >
+			<logger level="INFO" doc:name="Logger" doc:id="6223f00c-b11d-47db-af1e-98bba5255c51" message='"File Name to be deleted :" #[payload]' />
+			<s3:delete-object doc:name="Delete object" doc:id="9219cb0a-6bd8-4d0e-a23d-a9e1f1bf71bd" config-ref="Amazon_S3_Configuration" bucketName="${secure::amazons3.bucket}" key="#[payload]"/>
+		</foreach>
+	</sub-flow>
+	<flow name="processCabsFlow" doc:id="eef0dd38-112a-4376-827f-3a01905e13d3" >
+		<scheduler doc:name="Scheduler" doc:id="ca0ce003-bb1f-4a12-923d-657a7e11b5aa" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="1" timeUnit="HOURS" />
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="start Logger" doc:id="e374a16c-252b-4e1e-ace8-37db1cd91e6a" message='"Start of Cabs processing Service"' />
+		<set-variable value='#["empty"]' doc:name="Set intialize payload" doc:id="6fa6a588-00e9-4fbd-b4d5-d87e68163703" variableName="consolidatePayloadUber" />
+		<set-variable value='#["empty"]' doc:name="Set intialize payload" doc:id="c3639465-b0fd-42aa-83d7-d5f3cb8c4f3a" variableName="consolidatePayloadOla" />
+		<s3:list-objects doc:name="List objects" doc:id="8ff183bd-8ae3-4d16-961d-a129d640ea33" config-ref="Amazon_S3_Configuration" bucketName="${secure::amazons3.bucket}" />
+		<foreach doc:name="For Each" doc:id="01ff9569-74b1-4520-8c75-d5c421941953" >
+			<choice doc:name="Choice" doc:id="685972f8-e301-42d4-89ba-f4c79c980d71" >
+				<when expression='#[payload.key startsWith "UBER-"]' >
+					<set-variable value="#[payload.key]" doc:name="Set key" doc:id="f7bac9ba-9dc1-44d6-a888-ab10b8d32276" variableName="uberkey"/>
+					<s3:get-object doc:name="Get object" doc:id="796666d5-5464-470f-9342-9ecc90abd660" config-ref="Amazon_S3_Configuration" bucketName="${secure::amazons3.bucket}" key="#[payload.key]" outputMimeType="application/csv" />
+					<logger level="INFO" doc:name="request Logger" doc:id="8dbf587d-e704-4aea-90f7-722562c709f3" message='"Data received " #[payload]' />
+					<choice doc:name="Choice" doc:id="92f66f83-7e8d-4ce8-b243-7266ab3f452c" >
+						<when expression='#[vars.consolidatePayloadUber != "empty"]' >
+							<ee:transform doc:name="map to target" doc:id="4b4840fc-408d-4f8c-9468-ff2fb59e8126" >
+								<ee:message >
+									<ee:set-payload ><![CDATA[%dw 2.0
+output application/dw
+---
+vars.consolidatePayloadUber ++ (payload map((row) -> {
+	"name": row.name default "",
+	"userId" : row.userId,
+	"contact" : row.contact,
+	"serviceName" : row.serviceName,
+	"serviceNumber" : row.serviceNumber,
+	"serviceId" : row.serviceId,
+	"bookingId" : row.bookingId,
+	"startDate" : row.startDate,
+	"startTime" : row.startTime,
+	"endDate" : row.endDate,
+	"endTime" : row.endTime,
+	"origin" : row.origin,
+	"destination" : row.destination,
+	"noOfPassengers" : row.noOfPassengers,
+	"noOfCars" : row.noOfCars,
+	"couponApplied" : row.couponApplied,
+	"couponName" : row.couponName,
+	"price" : row.price,
+	"carType" : row.carType,
+	"insurance" : row.insurance
+}))]]></ee:set-payload>
+								</ee:message>
+								<ee:variables >
+									<ee:set-variable variableName="uberfileName" ><![CDATA[vars.uberfileName ++ "," ++ vars.uberkey]]></ee:set-variable>
+								</ee:variables>
+							</ee:transform>
+							<set-variable value="#[payload]" doc:name="Set consolidated payload Uber" doc:id="e9a46a06-560d-4740-b052-1c294c23dea3" variableName="consolidatePayloadUber" />
+						</when>
+						<otherwise >
+							<ee:transform doc:name="map to target" doc:id="2c8b93a9-96db-4152-ab21-17189d2ad5fe" >
+								<ee:message >
+									<ee:set-payload ><![CDATA[%dw 2.0
+output application/dw
+---
+payload map((row) -> {
+	"name": row.name default "",
+	"userId" : row.userId,
+	"contact" : row.contact,
+	"serviceName" : row.serviceName,
+	"serviceNumber" : row.serviceNumber,
+	"serviceId" : row.serviceId,
+	"bookingId" : row.bookingId,
+	"startDate" : row.startDate,
+	"startTime" : row.startTime,
+	"endDate" : row.endDate,
+	"endTime" : row.endTime,
+	"origin" : row.origin,
+	"destination" : row.destination,
+	"noOfPassengers" : row.noOfPassengers,
+	"noOfCars" : row.noOfCars,
+	"couponApplied" : row.couponApplied,
+	"couponName" : row.couponName,
+	"price" : row.price,
+	"carType" : row.carType,
+	"insurance" : row.insurance
+})]]></ee:set-payload>
+								</ee:message>
+								<ee:variables >
+									<ee:set-variable variableName="uberfileName" ><![CDATA[vars.uberkey]]></ee:set-variable>
+								</ee:variables>
+							</ee:transform>
+							<set-variable value="#[payload]" doc:name="Set consolidated payload" doc:id="c32df648-01c1-42aa-a4ee-3e6f0b3664cc" variableName="consolidatePayloadUber" />
+						</otherwise>
+					</choice>
+				</when>
+				<when expression='#[payload.key startsWith "OLA-"]'>
+					<set-variable value="#[payload.key]" doc:name="Set key" doc:id="76127726-5377-4901-8f86-dd9a75bf682f" variableName="olakey" />
+					<s3:get-object doc:name="Get object" doc:id="05208ce1-0053-4f8f-82ab-ef36dd2dc93d" config-ref="Amazon_S3_Configuration" bucketName="${secure::amazons3.bucket}" key="#[payload.key]" outputMimeType="application/csv" />
+					<logger level="INFO" doc:name="request Logger" doc:id="811f5112-3915-4754-a913-a833a7ad8e51" message='"Data received " #[payload]' />
+					<choice doc:name="Choice" doc:id="ae374f78-5f16-437f-8bcf-d232a3e7a5c4" >
+						<when expression='#[vars.consolidatePayloadOla != "empty"]' >
+							<ee:transform doc:name="map to target" doc:id="38cc3d63-a6ac-4b59-94a9-3ae7d4d8659c" >
+								<ee:message >
+									<ee:set-payload ><![CDATA[%dw 2.0
+output application/dw
+---
+vars.consolidatePayloadOla ++ (payload map((row) -> {
+	"name": row.name default "",
+	"userId" : row.userId,
+	"contact" : row.contact,
+	"serviceName" : row.serviceName,
+	"serviceNumber" : row.serviceNumber,
+	"serviceId" : row.serviceId,
+	"bookingId" : row.bookingId,
+	"startDate" : row.startDate,
+	"startTime" : row.startTime,
+	"endDate" : row.endDate,
+	"endTime" : row.endTime,
+	"origin" : row.origin,
+	"destination" : row.destination,
+	"noOfPassengers" : row.noOfPassengers,
+	"noOfCars" : row.noOfCars,
+	"couponApplied" : row.couponApplied,
+	"couponName" : row.couponName,
+	"price" : row.price,
+	"carType" : row.carType,
+	"insurance" : row.insurance
+}))]]></ee:set-payload>
+								</ee:message>
+								<ee:variables >
+									<ee:set-variable variableName="olafileName" ><![CDATA[vars.olafileName ++ "," ++ vars.olakey]]></ee:set-variable>
+								</ee:variables>
+							</ee:transform>
+							<set-variable value="#[payload]" doc:name="Copy_of_Set consolidated payload Uber" doc:id="e36206db-84a0-465a-80f5-6e5a8b8c3bdd" variableName="consolidatePayloadOla" />
+						</when>
+						<otherwise >
+							<ee:transform doc:name="map to target" doc:id="6265eea6-c503-4401-b662-035e71caa174" >
+								<ee:message >
+									<ee:set-payload ><![CDATA[%dw 2.0
+output application/dw
+---
+payload map((row) -> {
+	"name": row.name default "",
+	"userId" : row.userId,
+	"contact" : row.contact,
+	"serviceName" : row.serviceName,
+	"serviceNumber" : row.serviceNumber,
+	"serviceId" : row.serviceId,
+	"bookingId" : row.bookingId,
+	"startDate" : row.startDate,
+	"startTime" : row.startTime,
+	"endDate" : row.endDate,
+	"endTime" : row.endTime,
+	"origin" : row.origin,
+	"destination" : row.destination,
+	"noOfPassengers" : row.noOfPassengers,
+	"noOfCars" : row.noOfCars,
+	"couponApplied" : row.couponApplied,
+	"couponName" : row.couponName,
+	"price" : row.price,
+	"carType" : row.carType,
+	"insurance" : row.insurance
+})]]></ee:set-payload>
+								</ee:message>
+								<ee:variables >
+									<ee:set-variable variableName="olafileName" ><![CDATA[vars.olakey]]></ee:set-variable>
+								</ee:variables>
+							</ee:transform>
+							<set-variable value="#[payload]" doc:name="Set consolidated payload" doc:id="207731a5-9287-45a3-bfc9-39c45e2359f6" variableName="consolidatePayloadOla" />
+						</otherwise>
+					</choice>
+				</when>
+			</choice>
+		</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="d6216061-75af-4ea8-ad62-c69e8fc363ad" message='"object " #[vars.consolidatePayloadUber] " and " #[vars.consolidatePayloadOla] "keys " #[vars.olafileName] " and "#[vars.uberfileName]' />
+		<choice doc:name="Choice" doc:id="b89c2051-060a-42f1-8eab-bbaac0133e92" >
+			<when expression='#[vars.consolidatePayloadUber != "empty"]'>
+				<flow-ref doc:name="processuberfile" doc:id="199dfac2-aa9d-4ee6-9e01-f6b352599965" name="processuberfile" />
+				<logger level="INFO" doc:name="Logger" doc:id="b76ecd93-b663-4258-a2bd-c50cd88a8510" message='"Uber cab process completed"' />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="No data Logger" doc:id="626871df-1b2b-4f73-a871-d20590861a6f" message='"No Data to process for UBER"'/>
+			</otherwise>
+		</choice>
+		<choice doc:name="Choice" doc:id="ad40610c-42fe-4f58-a136-50b8979b9266" >
+			<when expression='#[vars.consolidatePayloadOla != "empty"]'>
+				<flow-ref doc:name="processolafile" doc:id="368b2368-7ed9-483e-a7db-0fbc9aa99861" name="processolafile" />
+				<logger level="INFO" doc:name="Logger" doc:id="2d6b0056-f5a1-482b-86eb-2222eab11ba4" message='"Ola cab process completed"' />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="No data Logger" doc:id="6b4bcec3-f014-4674-b578-cbe760f94d60" message='"No Data to process for OLA"' />
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="4899287d-14ce-4d6e-bb8f-85ea3c4ee120" type="ANY">
+				<logger level="INFO" doc:name="Logger" doc:id="27ca5e8a-3359-4e6a-906a-75c1fc11fe4b" message='"Error: " #[error.description]'/>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<sub-flow name="processolafile" doc:id="ca20267b-22ed-4b06-a09a-bc3e956564e2" >
+		<set-payload value="#[vars.consolidatePayloadOla]" doc:name="Set Payload" doc:id="063d743b-af1e-4b2f-a3a5-95c23c42477e" />
+		<ee:transform doc:name="map to consolidated value" doc:id="5f287a63-cc24-4204-8f48-54bc11ad80c2" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv
+---
+payload map(row, index) -> {
+	"name": row.name default "",
+	"userId" : row.userId,
+	"contact" : row.contact,
+	"serviceName" : row.serviceName,
+	"serviceNumber" : row.serviceNumber,
+	"serviceId" : row.serviceId,
+	"bookingId" : row.bookingId,
+	"startDate" : row.startDate,
+	"startTime" : row.startTime,
+	"endDate" : row.endDate,
+	"endTime" : row.endTime,
+	"origin" : row.origin,
+	"destination" : row.destination,
+	"noOfPassengers" : row.noOfPassengers,
+	"noOfCars" : row.noOfCars,
+	"couponApplied" : row.couponApplied,
+	"couponName" : row.couponName,
+	"price" : row.price,
+	"carType" : row.carType,
+	"insurance" : row.insurance	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="data Logger" doc:id="fb677d65-87f7-42a0-8f4b-b22eaabe0388" message='"Ola Payload: " #[payload]' />
+		<set-variable value='#[%dw 2.0&#10;import * from dw::core::Dates&#10;output application/json	&#10;---&#10;"Consolidate_OLA_Data_" ++ (now() as Number) ++ ".csv"]' doc:name="Set filename" doc:id="78d0421e-bb20-485d-ab6c-6830d5d5db58" variableName="filename" />
+		<s3:create-object doc:name="Create object" doc:id="7d59925c-d97c-48b2-8b74-6c88e2acf0ec" config-ref="Amazon_S3_Configuration" bucketName="${secure::amazons3.bucket}" key="#[vars.filename]" />
+		<ee:transform doc:name="split files" doc:id="697c0ac6-1bfb-4a86-93ba-9acc14de8955" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+vars.olafileName splitBy(/[,\/]/)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="fff15c21-9dca-4e27-8a80-74ca346e52c7" >
+			<logger level="INFO" doc:name="Logger" doc:id="804e7a36-37f8-40b3-9d5c-58b2b697c554" message='"File Name to be deleted :" #[payload]' />
+			<s3:delete-object doc:name="Delete object" doc:id="a0298eaf-c1c2-4086-9c03-a58235408414" config-ref="Amazon_S3_Configuration" bucketName="${secure::amazons3.bucket}" key="#[payload]" />
+		</foreach>
+	</sub-flow>
+</mule>

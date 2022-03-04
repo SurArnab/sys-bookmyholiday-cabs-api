@@ -1,0 +1,26 @@
+{
+    "id" : "1",
+    "name" : "Ola Car Service Dezire",
+    "number":"OLA-1235",
+    "description" : "Affordable and secure Car Services",
+    "rating" : 5,
+    "carType" : 
+      "[{\"cartype\" : \"Petrol\"},{\"cartype\" :\"Diesel\"}]",
+    "startDate": "2022-02-27",
+    "endDate" : "2022-02-27",
+    "noOfDays" : 1,
+    "origin" : "MUM",
+    "originLocationDesc" : "MUMBAI",
+    "destination" : "GOA",
+    "destinationLocationDesc" : "GOA",
+    "price" : "[{\"baseFare\" : 4000,\"taxes\" : 1000,\"total\" : 5000, \"cartype\" : \"Petrol\"},{\"baseFare\" : 3000,\"taxes\" : 1000,\"total\" : 4000, \"cartype\" : \"Diesel\"}]",
+    "currency" : "INR",
+    "baggage" : 3,
+    "surgeMultiplier" : 0,
+    "availableseat": 4,
+    "images" : "[{\"image\": \"car1.jpg\", \"image\":\"car2.jpg\"}]",
+    "availableCoupons": "[{\"code\" : \"500OFF\",\"description\" : \"Use this coupon to get Rupees 500 discount on purchase of 5000 and above.\",\"rule\" : \"price > 5000\"},{\"code\" : \"100OFF\", \"description\" : \"Use this coupon to get Rupees 100 discount on purchase of 1000 and above.\",\"rule\" : \"price > 1000\"}]",
+    "cancellationPolicy":"[{\"timeFrame\" : \"0-2 Hours\",\"charges\" : \"5000\"},{\"timeFrame\" : \"2-72 Hours\",\"charges\" : \"3000\"},{   \"timeFrame\" : \"more than 72 Hours\",\"charges\" : \"500\"}]",
+    "reschedulePolicy": "[{\"timeFrame\" : \"0-2 Hours\",\"charges\" : \"3000\"},{\"timeFrame\" : \"2-72 Hours\",\"charges\" : \"2000\"},{   \"timeFrame\" : \"more than 72 Hours\",\"charges\" : \"500\"}]",
+    "availableCars" : 10
+  }

@@ -1,0 +1,95 @@
+#%RAML 1.0
+title: CabBooking-API
+description: This is book my holiday API design for  car booking. We can search and book cars based on the availability provided.
+baseUri: https://api.cabbooking.com/api/
+version: v1
+mediaType: 
+  - application/json
+protocols:
+  - HTTPS
+  - HTTP
+
+uses:
+  bookingDataType: library/bookingDataType.raml
+  bookingResourceType: library/bookingResourceType.raml
+
+/cabs:
+  type:
+    bookingResourceType.bookingCollection:
+      getBookingExample: !include /example/cabs.json
+      addBookingExample: !include /example/addBooking.json
+      postResponseExample: !include /example/addBookingResponse.json
+      getBookingType: bookingDataType.booking[]
+      addBookingType: bookingDataType.booking
+      postResponseType: bookingDataType.addBookingResponse
+
+  get:
+    queryParameters:
+        source:
+          type: string
+          example: CCU
+        destination:
+          type: string
+          example: BEN
+        startDate?:
+          type: date-only
+          example: "2022-02-23"
+        endDate?:
+          type: date-only
+          example: "2022-02-23"
+        noOfCars?:
+          type: number
+          example: 2
+          default: 1
+          minimum: 1
+  post:
+  put:
+  /{cab_id}:
+    type:
+      bookingResourceType.bookingDetailsCollection: 
+        getBookingDetailsExample: !include /example/cabDetails.json
+        completeBookingResponseExample: !include /example/bookingConfirm.json
+        submitBookingExample: !include /example/booking.json
+        updateBookingExample: !include /example/cancelBooking.json
+        getBookingDetailsType: bookingDataType.booking
+        submitBookingType: bookingDataType.submitBooking
+        updateBookingType: bookingDataType.cancelBooking
+    
+    get:
+      
+    post:
+    put:
+  /count:
+    /id:
+      get:
+        description: This API is to get the latest count of id
+        responses:
+          200:
+            body:
+              application/json:
+                example: |
+                  {
+                    "idResponse" : 1
+                  }
+    /bookingid:
+      get:
+        description: This API is to get the latest count of id
+        responses:
+          200:
+            body:
+              application/json:
+                example: |
+                  {
+                    "bookingResponse" : "CAB-0002"
+                  }
+    /availability/{id}:
+      get:
+        description: This API is to get the latest count of id
+        responses:
+          200:
+            body:
+              application/json:
+                example: |
+                  {
+                    "availability" : 5
+                  }

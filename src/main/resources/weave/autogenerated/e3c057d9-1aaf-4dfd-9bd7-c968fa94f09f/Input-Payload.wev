@@ -1,0 +1,25 @@
+%dw 2.0
+
+type auto_e3c057d9_1aaf_4dfd_9bd7_c968fa94f09f_Input_Payload = Array<org_mule_extension_s3_api_model_S3ObjectSummary>
+type org_mule_extension_s3_api_model_S3ObjectSummary = {|
+  ETag?: String, 
+  bucketName?: String, 
+  key?: String, 
+  lastModified?: DateTime {"typeId": "java.time.LocalDateTime"}, 
+  owner?: org_mule_extension_s3_api_model_Owner, 
+  size?: Number, 
+  storageClass?: String
+|} {"typeAlias": "S3ObjectSummary",
+"class": "org.mule.extension.s3.api.model.S3ObjectSummary",
+"typeId": "org.mule.extension.s3.api.model.S3ObjectSummary"}
+type org_mule_extension_s3_api_model_Owner = {|
+  displayName?: String, 
+  id?: String
+|} {"typeAlias": "Owner",
+"class": "org.mule.extension.s3.api.model.Owner",
+"typeId": "org.mule.extension.s3.api.model.Owner"}
+
+
+
+
+

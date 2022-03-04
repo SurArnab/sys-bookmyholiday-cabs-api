@@ -1,0 +1,28 @@
+%dw 2.0
+
+type auto_4f00bc4f_933c_41bd_b42e_7ca8eaa6d514_Output_Payload = {
+  insurance?: Boolean, 
+  couponApplied?: Boolean, 
+  cartype: String, 
+  couponName?: String, 
+  serviceNumber?: String, 
+  isGuest: Boolean, 
+  endDate: String, 
+  origin: String, 
+  destination: String, 
+  noOfPassengers: Number, 
+  userName: String, 
+  serviceName: String, 
+  userid?: String, 
+  bookingid: String, 
+  availableCars: Number, 
+  price: Number, 
+  noOfCars: Number, 
+  contactNumber: Number, 
+  startTime: String, 
+  endTime: String, 
+  serviceId: String, 
+  startDate: String, 
+  _?: Any
+}
+

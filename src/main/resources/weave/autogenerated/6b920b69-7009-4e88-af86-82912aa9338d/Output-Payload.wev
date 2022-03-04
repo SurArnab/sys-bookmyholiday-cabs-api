@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_6b920b69_7009_4e88_af86_82912aa9338d_Output_Payload = {| idResponse: String |}
+
